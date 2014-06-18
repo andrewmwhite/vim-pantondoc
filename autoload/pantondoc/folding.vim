@@ -114,33 +114,34 @@ endfunction
 " Syntax assisted (SA) foldexpr {{{2
 function! pantondoc#folding#MarkdownLevelSA()
     let vline = getline(v:lnum)
-    let vline1 = getline(v:lnum + 1)
-    if vline =~ '^#\{1,6}'
-        if synIDattr(synID(v:lnum, 1, 1), "name") !~? '\(pandocDelimitedCodeBlock\|clojure\|comment\)'
-	    if g:pandoc#folding#mode == 'relative'
-		return ">". len(markdown#headers#CurrentHeaderAncestors(v:lnum))
-	    else
-                return ">". len(matchstr(vline, '^#\{1,6}'))
-	    endif
-        endif
-    elseif vline =~ '^[^-=].\+$' && vline1 =~ '^=\+$'
-        if synIDattr(synID(v:lnum, 1, 1), "name") !~? '\(pandocDelimitedCodeBlock\|comment\)'  &&
-                    \ synIDattr(synID(v:lnum + 1, 1, 1), "name") == "pandocSetexHeader"
-            return ">1"
-        endif
-    elseif vline =~ '^[^-=].\+$' && vline1 =~ '^-\+$'
-        if synIDattr(synID(v:lnum, 1, 1), "name") !~? '\(pandocDelimitedCodeBlock\|comment\)'  &&
-                    \ synIDattr(synID(v:lnum + 1, 1, 1), "name") == "pandocSetexHeader"
+    let synName = synIDattr(synID(v:lnum, 1, 1), "name")
+    if synName !~? '\(pandocDelimitedCodeBlock\|clojure\|comment\)'
+        " may need to match against stack of highlight groups
+        if synName =~? 'pandocAtxHeader' " && vline !~ '^\s*$'
+            " in ATX header; not empty line (see 'pandoc_blank_before_header')
             if g:pandoc#folding#mode == 'relative'
-		return  ">". len(markdown#headers#CurrentHeaderAncestors(v:lnum))
-	    else
-		return ">2"
-	    endif
+                return ">". len(markdown#headers#CurrentHeaderAncestors(v:lnum))
+            else
+                return ">". len(matchstr(vline, '^#\{1,6}'))
+            endif
+        elseif synName =~? 'pandocSetexHeader' && vline =~ '^[^-=].\+$'
+            " in Setex header but not the dash/equals line
+            if getline(v:lnum + 1) =~ '^-\+$'
+                " next line is dashes => level 2
+                if g:pandoc#folding#mode == 'relative'
+                    return ">". len(markdown#headers#CurrentHeaderAncestors(v:lnum))
+                else
+                    return ">2"
+                endif
+            else
+                " no dashes => equals => level 1
+                return ">1"
+            endif
+        elseif vline =~ '^<!--.*fold-begin -->'
+            return "a1"
+        elseif vline =~ '^<!--.*fold-end -->'
+            return "s1"
         endif
-    elseif vline =~ '^<!--.*fold-begin -->'
-	return "a1"
-    elseif vline =~ '^<!--.*fold-end -->'
-	return "s1"
     endif
     return "="
 endfunction
