@@ -35,3 +35,10 @@ function! pantondoc#completion#Complete(findstart, base)
     endif
     return -3
 endfunction
+
+function! pantondoc#completion#Context()
+    let curline = getline('.')
+    if curline =~ '.*@[^ ;\],]*$'
+    return "\<c-x>\<c-o>"
+    endif
+endfunction
